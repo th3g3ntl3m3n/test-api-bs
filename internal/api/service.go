@@ -1,7 +1,6 @@
 package api
 
 import (
-	"log"
 	"net/http"
 	"strconv"
 	"test-api-bs/internal/model"
@@ -37,17 +36,22 @@ func New(db *gorm.DB) *gin.Engine {
 
 func (api *api) SaveEntry(c *gin.Context) {
 	pid := c.Params.ByName("id")
-	portfolioID, _ := strconv.Atoi(pid)
+	portfolioID, err := strconv.Atoi(pid)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "bad request"})
+		return
+	}
 
 	var entry model.Entry
-	if err := c.BindJSON(&entry); err != nil {
+	if err = c.BindJSON(&entry); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "bad request"})
 		return
 	}
 
 	var portfolio model.Portfolio
-	if err := api.db.Raw("SELECT id,name FROM portfolios WHERE id = ?", portfolioID).Scan(&portfolio).Error; err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "portfolio not found"})
+	api.db.Raw("SELECT id,name FROM portfolios WHERE id = ?", portfolioID).Scan(&portfolio)
+	if portfolio.Id == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "portfolio not found"})
 		return
 	}
 
@@ -61,10 +65,7 @@ func (api *api) SaveEntry(c *gin.Context) {
 
 func (api *api) GetUsers(c *gin.Context) {
 	var users []model.User
-	err := api.db.Raw("SELECT id,name,email,verified, locked FROM users").Scan(&users).Error
-	if err != nil {
-		log.Println(err)
-	}
+	api.db.Raw("SELECT id,name,email,verified, locked FROM users").Scan(&users)
 	c.JSON(http.StatusOK, users)
 }
 
@@ -76,11 +77,8 @@ func (api *api) GetUserByID(c *gin.Context) {
 		return
 	}
 	var user model.User
-	err = api.db.Raw("SELECT id,name,email,verified, locked FROM users WHERE id = ?", uid).Scan(&user).Error
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "bad request"})
-		return
-	}
+	api.db.Raw("SELECT id,name,email,verified, locked FROM users WHERE id = ?", uid).Scan(&user)
+
 	if user.Id == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 		return
@@ -97,28 +95,27 @@ func (api *api) GetUserPortfolio(c *gin.Context) {
 		return
 	}
 	var user model.User
-	err = api.db.Raw("SELECT id,name,email,verified, locked FROM users WHERE id = ?", uid).Scan(&user).Error
-	if err != nil {
-		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "bad request"})
-		return
-	}
+	api.db.Raw("SELECT id,name,email,verified, locked FROM users WHERE id = ?", uid).Scan(&user)
+
 	if user.Id == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
 		return
 	}
 
 	var portfolio model.Portfolio
-	if err := api.db.Raw("SELECT portfolios.id,portfolios.name FROM portfolios LEFT JOIN users ON users.id = portfolios.user_id WHERE portfolios.user_id = ?", user.Id).Scan(&portfolio).Error; err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "portfolio not found"})
+	api.db.Raw("SELECT portfolios.id,portfolios.name FROM portfolios LEFT JOIN users ON users.id = portfolios.user_id WHERE portfolios.user_id = ?", user.Id).Scan(&portfolio)
+
+	if portfolio.Id == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "portfolio not found"})
 		return
 	}
 
 	var entries []model.Entry
-	if err := api.db.Raw("SELECT coin_name, amount, price, transaction_fee FROM entries WHERE folio_id = ?", portfolio.Id).Scan(&entries).Error; err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "portfolio not found"})
+	api.db.Raw("SELECT coin_name, amount, price, transaction_fee FROM entries WHERE folio_id = ?", portfolio.Id).Scan(&entries)
+	if len(entries) == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "entries not found"})
 		return
 	}
 
 	c.JSON(http.StatusOK, entries)
-
 }

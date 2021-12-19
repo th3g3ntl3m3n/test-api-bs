@@ -2,12 +2,11 @@ package api_test
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"test-api-bs/internal/api"
-	"test-api-bs/internal/model"
 	"testing"
 )
 
@@ -35,7 +34,6 @@ func TestGetUserById(t *testing.T) {
 			}
 		})
 	}
-
 }
 func TestGetUsers(t *testing.T) {
 
@@ -58,10 +56,8 @@ func TestGetUsers(t *testing.T) {
 
 }
 func TestGetUserPortfolio(t *testing.T) {
-
 	// router_test.go
 	testRouter := api.New(api.SetupTestDB())
-
 	tests := make(map[string]int)
 	tests["/user/1/portfolio"] = http.StatusOK
 	tests["/user/2/portfolio"] = http.StatusOK
@@ -81,46 +77,38 @@ func TestGetUserPortfolio(t *testing.T) {
 			}
 		})
 	}
-	// req, err := http.NewRequest("GET", "/user/1/portfolio", nil)
-	// if err != nil {
-	// 	fmt.Println(err)
-	// }
-
-	// resp := httptest.NewRecorder()
-	// testRouter.ServeHTTP(resp, req)
-
-	// t.Log(resp.Body.String())
-
-	// if resp.Code != http.StatusOK {
-	// 	t.Fail()
-	// }
 
 }
 func TestSaveEntry(t *testing.T) {
 
 	testRouter := api.New(api.SetupTestDB())
 
-	var entry model.Entry
-	entry.Amount = 100
-	entry.Price = 1.23
-	entry.TransactionFee = 2
-	entry.CoinName = "bitcoin"
-
-	jsonData, _ := json.Marshal(entry)
-
-	req, err := http.NewRequest("POST", "/portfolio/1/entry", bytes.NewBuffer(jsonData))
-	req.Header.Add("Content-Type", "application/json")
-	if err != nil {
-		fmt.Println(err)
+	type testData struct {
+		name     string
+		endpoint string
+		payload  string
+		expect   int
 	}
 
-	resp := httptest.NewRecorder()
-	testRouter.ServeHTTP(resp, req)
-
-	t.Log(resp.Body.String())
-
-	if resp.Code != http.StatusOK {
-		t.Fail()
+	var tests []testData
+	tests = append(tests, testData{"Correct Entry", "/portfolio/1/entry", `{"coinName":"bitcoin", "amount": 10, "price": 123.23, "transactionFee": 10}`, 200})
+	tests = append(tests, testData{"Incorrect Entry", "/portfolio/1/entry", `{"coinName":"bitcoin", "amount": "10", "price": "abc", "transactionFee": 10}`, 400})
+	tests = append(tests, testData{"Incorrect Entry Wrong Portfolio", "/portfolio/abc/entry", `{"coinName":"bitcoin", "amount": "10", "price": 10, "transactionFee": 10}`, 400})
+	tests = append(tests, testData{"Incorrect Entry Portfolio Not found", "/portfolio/8/entry", `{"coinName":"bitcoin", "amount": 10, "price": 10, "transactionFee": 10}`, 404})
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			req, err := http.NewRequest("POST", test.endpoint, bytes.NewBuffer([]byte(test.payload)))
+			req.Header.Add("Content-Type", "application/json")
+			if err != nil {
+				fmt.Println(err)
+			}
+			resp := httptest.NewRecorder()
+			testRouter.ServeHTTP(resp, req)
+			log.Println(resp.Body.String())
+			if resp.Code != test.expect {
+				t.Fail()
+			}
+		})
 	}
 
 }

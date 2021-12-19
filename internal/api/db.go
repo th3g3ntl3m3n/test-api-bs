@@ -32,7 +32,7 @@ func SetupTestDB() *gorm.DB {
 	DBHOST := "localhost"
 	DBUSER := "postgres"
 	DBPASS := "root"
-	DBNAME := "bondstate_db"
+	DBNAME := "bondstate_db_test"
 	DBPORT := "5432"
 
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=Asia/Kolkata", DBHOST, DBUSER, DBPASS, DBNAME, DBPORT)
