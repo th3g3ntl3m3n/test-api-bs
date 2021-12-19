@@ -24,4 +24,5 @@ to test the service
 # logic
 
 user and portfolio are 1-1 relations
+
 user can add many entries in portfolio
