@@ -14,8 +14,11 @@ to test the service
 # end-points
 
 /users -> GetAll users from db
+
 /users/:id -> Get user from db by id
+
 /portfolio/:id/entry -> save a entry in portfolio [id provided]
+
 /user/:id/portfolio -> Get portfolio info of a user
 
 # logic
